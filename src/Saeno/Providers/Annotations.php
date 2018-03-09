@@ -10,8 +10,6 @@
 
 namespace Saeno\Providers;
 
-use Phalcon\Annotations\Adapter\Memory;
-
 /**
  * Get the 'annotations' service provider.
  */
@@ -22,6 +20,18 @@ class Annotations extends ServiceProvider
      */
     public function register()
     {
-        $this->app->instance('annotations', new Memory, $singleton = true);
+        $this->app->singleton('annotations', function () {
+
+            $adapters = config('annotation.adapters');
+            $selected_adapter = config()->app->annotation_adapter;
+
+            if (isset($adapters[$selected_adapter])) {
+                $conf = $adapters[$selected_adapter];
+                return new $conf['class']($conf['options'] ?? []);
+            }
+
+            // fallback adapter
+            return new \Phalcon\Annotations\Extended\Adapter\Memory();
+        });
     }
 }
