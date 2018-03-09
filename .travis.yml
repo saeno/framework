@@ -1,0 +1,89 @@
+language: php
+
+sudo: true
+
+services:
+  - mysql
+
+matrix:
+  include:
+
+    # PHP5.6
+    - php: 5.6
+      env: PHALCON_VERSION="3.2.x" SAENO_VERSION="dev"
+    - php: 5.6
+      env: PHALCON_VERSION="3.1.x" SAENO_VERSION="dev"
+    - php: 5.6
+      env: PHALCON_VERSION="3.0.x" SAENO_VERSION="dev"
+
+    # PHP7.0
+    - php: 7.0
+      env: PHALCON_VERSION="3.2.x" SAENO_VERSION="dev"
+    - php: 7.0
+      env: PHALCON_VERSION="3.1.x" SAENO_VERSION="dev"
+    - php: 7.0
+      env: PHALCON_VERSION="3.0.x" SAENO_VERSION="dev"
+
+    # PHP7.1
+    # - php: 7.1
+    #   env: PHALCON_VERSION="3.2.x" SAENO_VERSION="dev"
+    # - php: 7.1
+    #   env: PHALCON_VERSION="3.1.x" SAENO_VERSION="dev"
+    # - php: 7.1
+    #   env: PHALCON_VERSION="3.0.x" SAENO_VERSION="dev"
+
+env:
+  global:
+    - SAENO_FOLDER=saeno-dist
+
+    # built-in web
+    - SERVE_HOST="0.0.0.0"
+    - SERVE_PORT="8080"
+
+    # mail settings
+    - MAIL_ADAPTER="mailgun"
+    - MAILER_MAIL_FROM="Solid Layer - TravisCI <postmaster@sandboxa6c86c16840d4756826185daa128e64d.mailgun.org>"
+
+    # mailgun settings
+    - MAILER_MAILGUN_DOMAIN="sandboxa6c86c16840d4756826185daa128e64d.mailgun.org"
+    # secret key
+    - secure: "JaqOj6ozbf1xU/I9ZYvljAmL2ttgC7DKShC7lPwrIe7IZnntYX3t5vpzhEhU4Ymt6uB4E/YYfwr15Yn/yl4hJUj6hzrjQsH8O7AmJv3aCFzIb+WpbWkJ7XdBQzaVXg7mbJpsL/TBZy4/hqYOw0DR542xGcAo5Z84wEZ/W9sei/pvIwTg+rIqA3XPh9vgvUi36xV6/O3n5FBZcK+3U8hwVFqUU8Say99kZOYwc934hhyoA9K4Px8MG7XeC8zl/B3pDHBDyvQ2eU0dUrb2zMx2LhByRGQ4tcERLJslShscb0a/32I3Jk/aesgArt2d0ZaEmanixsfm9lswOgoO/YZkci0n5Lto3/w6PJsko+3jJ7P1ND9BrK+lY5BKRC0Qkt3U8EsrSpjgobGzdXztZo+ZXWD7s2RClQKLI7jjMqW4k/1sO5rQ/50jzEtLoX5jZs5r6OrR6BEN0J4tI7b74sVeqYIoSzuX6eJGCbT7dcRIdNcz1jrvhcmbZ9YLxpHOp8PE2uKISJrUtuioOIjv6j6bRxy1gOcglZlRhv5N/xikCQmmgLgrMvwkaaLSjo5oe81ETX+/VIH/6cMI+qIvKtmOewLes6FszbCKQs/jyWPLQZjAlf9ZJmCspwWvNbIwSBpzRCW95VAhfHhgQZ6tPNCl3LqIDBHVGD4TpLlIg+wKYEU="
+
+cache:
+  directories:
+    - ~/.composer/cache
+    - ~/cphalcon
+
+before_install:
+  # beanstald installation
+  - curl -s https://raw.githubusercontent.com/saeno/framework/${TRAVIS_BRANCH}/build/ci/beanstalkd.sh | bash
+
+before_script:
+  - curl -s https://raw.githubusercontent.com/saeno/framework/${TRAVIS_BRANCH}/build/ci/build.sh | bash
+
+script:
+  - cd ~/${SAENO_FOLDER}
+
+  # call queue:listen
+  - php brood queue:listen > queue-worker.log 2>&1 &
+
+  # phpunit
+  - chmod a+x ./vendor/bin/phpunit
+  - chmod a+x ./vendor/saeno/framework/phpunit.xml
+  - ./vendor/bin/phpunit -c ./vendor/saeno/framework/phpunit.xml
+  - cat queue-worker.log
+  - cat internal-server.log
+
+  # call brood console commands
+  - curl -s https://raw.githubusercontent.com/saeno/framework/${TRAVIS_BRANCH}/build/ci/script.sh | bash
+
+notifications:
+  email:
+    recipients:
+      - daison12006013@gmail.com
+  slack:
+    secure: qfmGfO9sKIO+n1fd90qOH5rYq8TF66xNL8FNNvX6WaeQt1VQ00jcG/gU1mlkl3TFseY5yUvhrYsKwLlD4/CBTvG4tfR9mS3ei51P6flW+i618+hSrE5tP2IPRu9YLtccNrzFoGiLjRJvMhmxrE9FhamdH7Nxv9MDbizLpV6Wen11x2baQdVrJG7bpSApBP2q5Q13GahB+uMSBUPVE24yqJTkCsTuzLVDuZ5xbf13xBgfC+mxNPAj94Q0MQwBYI/NHukFl7Rx7169dUtugYsS5N2Bg4wbfuiCJdu3C6zr64jMCmow8xKtPFLaFbdv7Nfj5uOaJpv7InoOzVmbHOUjipweidjMgKayI2Hk9Kzjyzcn9IH7QVvmUfshqdLjZS4vdUvt7cUKGkh9m0rIhnDfDayAOf461Ntxixf5MQyFGFjddQgcCF5HqmyZmYmc5A1wzLMrdBFt6dh+SPaAH1gR+GUv5ZDbyyYNAPSWmlBMncUqFgbdIihWmu5HEQ6IwqfohM37WxlCXX5fQk04QHozVr3FJE7West7kf9FJ8UYAUPuLE4EPVaXk+DlcpwpjvcqQcEC+7JvEyjQ5dHxhJ1Dfl2N9/HJos52BdKStDwvVrFs6uBUzQdAvSdkGZpepevZr2eiKuYGWCOWMRNbHy70vsY+1NXQlUggz796ZIDOLlk=
+
+# branches:
+#   only:
+#     - master
