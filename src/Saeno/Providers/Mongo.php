@@ -10,7 +10,7 @@
 
 namespace Saeno\Providers;
 
-use MongoClient;
+use Phalcon\Db\Adapter\MongoDB\Client;
 
 /**
  * This provider instantiates the @see \MongoClient.
@@ -22,47 +22,45 @@ class Mongo extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('mongo.selected_adapter', function () {
-            $adapters = config('database.nosql_adapters');
+        $adapters = config('database.nosql_adapters');
+        foreach ($adapters as $adapter_name => $adapter_conf) {
 
-            $selected_adapter = config()->app->nosql_adapter;
-
-            if (empty($selected_adapter)) {
-                return false;
+            if (empty($adapter_conf)) {
+                throw new InvalidArgumentException("The provided settings for nosql adapter [$adapter_name] is invalid.");
             }
 
-            if (! isset($adapters[$selected_adapter])) {
-                return false;
-            }
+            $this->registerAdapterService($adapter_name, $adapter_conf);
+        }
 
-            return $adapters[$selected_adapter];
+        // register default mongo service
+        $this->app->singleton('mongo', function () {
+            return $this->app->make(config()->app->default_nosql_adapter);
         });
+    }
 
-        $this->app->singleton('mongo', function ($app) {
-            if (! class_exists(MongoClient::class)) {
+    private function registerAdapterService($adapter_name, $adapter_conf)
+    {
+        $this->app->singleton($adapter_name, function () use ($adapter_conf) {
+
+            if (!class_exists($adapter_conf['class'])) {
                 return $this;
             }
 
-            $adapter = $app->make('mongo.selected_adapter');
+            $options = $adapter_conf['options'];
 
-            if (! $adapter) {
-                return $this;
+            // use "uri" as connection string, if exists
+            if (isset($options->uri) && !empty($options->uri)) {
+                $str = $options->uri;
+            } else {
+                if (strlen($options->username) < 1 && strlen($options->password) < 1) {
+                    $str = 'mongodb://' . $options->host . ':' . $options->port;
+                } else {
+                    $str = 'mongodb://' . $options->username . ':' . $options->password . '@' . $options->host . ':' . $options->port;
+                }
             }
 
-            $host = $adapter->host;
-            $port = $adapter->port;
-            $username = $adapter->username;
-            $password = $adapter->password;
-
-            $str = 'mongodb://'.$username.':'.$password.'@'.$host.':'.$port;
-
-            if (strlen($username) < 1 && strlen($password) < 1) {
-                $str = 'mongodb://'.$host.':'.$port;
-            }
-
-            $mongo = new MongoClient($str);
-
-            return $mongo->selectDB($adapter->dbname);
+            $mongo_client = new $adapter_conf['class']($str);
+            return $mongo_client->selectDatabase($options->dbname);
         });
     }
 }
