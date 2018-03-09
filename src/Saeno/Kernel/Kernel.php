@@ -91,7 +91,12 @@ class Kernel
     {
         config(['modules' => $this->di->get('module')->all()]);
 
-        $this->di->get('application')->registerModules(config()->modules->toArray());
+        $application = $this->di->get('application');
+        $application->registerModules(config()->modules->toArray());
+
+        foreach ($application->getModules() as $key => $module) {
+            require_once realpath($this->paths['app']) . "/Modules/$key/Routes.php";
+        }
 
         if (is_cli()) {
             resolve('benchmark')->here('Registering All Modules');
@@ -101,25 +106,12 @@ class Kernel
     }
 
     /**
-     * Render the system content.
-     */
-    public function render()
-    {
-        echo $this->di->get('application')->handle()->getContent();
-    }
-
-    /**
-     * Here, you will be loading the system by defining the module.
+     * Handle request and display output
      *
-     * @param  string $module_name The module name
      * @return mixed
      */
-    public function run($module_name)
+    public function run()
     {
-        $this->di->get('application')->setDefaultModule($module_name);
-
-        $this->di->get($module_name)->afterModuleRun();
-
-        return $this;
+        echo $this->di->get('application')->handle()->getContent();
     }
 }
