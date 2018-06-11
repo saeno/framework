@@ -10,12 +10,12 @@
 
 namespace Saeno\Support\Phalcon\Mvc;
 
-use Phalcon\Mvc\Collection as BaseCollection;
+use Phalcon\Mvc\MongoCollection as IncubatorMongoCollection;
 
 /**
  * {@inheritdoc}
  */
-class Collection extends BaseCollection
+class Collection extends IncubatorMongoCollection
 {
     /**
      * A shortcut way when creating a new document.
