@@ -10,8 +10,6 @@
 
 namespace Saeno\Providers;
 
-use Saeno\Support\Auth\Auth as BaseAuth;
-
 /**
  * This provider handles the general authentication.
  */
@@ -22,6 +20,7 @@ class Auth extends ServiceProvider
      */
     public function register()
     {
-        $this->app->instance('auth', new BaseAuth, $singleton = true);
+        $auth_manager = config()->auth->manager;
+        $this->app->instance('auth', new $auth_manager, $singleton = true);
     }
 }

@@ -25,7 +25,7 @@ if (! function_exists('auth')) {
     /**
      * This returns the service provider 'auth'.
      *
-     * @return Saeno\Support\Auth\Auth
+     * @return Saeno\Support\Auth\Manager
      */
     function auth()
     {

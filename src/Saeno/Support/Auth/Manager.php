@@ -15,7 +15,7 @@ use InvalidArgumentException;
 /**
  * Authentication handler.
  */
-class Auth
+class Manager
 {
     /**
      * Attempt to login using the provided records and the password field.
@@ -25,7 +25,7 @@ class Auth
      */
     public function attempt($records)
     {
-        $password_field = config()->app->auth->password_field;
+        $password_field = config()->auth->password_field;
 
         if (isset($records[$password_field]) === false) {
             throw new InvalidArgumentException('Invalid argument for password field.');
@@ -36,6 +36,34 @@ class Auth
         $password = $records[$password_field];
         unset($records[$password_field]);
 
+        $auth_model = config()->auth->model;
+        if ($auth_model instanceof \Phalcon\Mvc\Collection) {
+            $user = $this->attemptNoSql($records);
+        } else {
+            $user = $this->attemptSql($records);
+        }
+
+        # check if there is no record, then return false
+
+        if (!$user) {
+            return false;
+        }
+
+        # now check if the password given is matched with the
+        # existing password recorded.
+
+        if (resolve('security')->checkHash($password, $user->{$password_field})) {
+            resolve('session')->set('isAuthenticated', true);
+            resolve('session')->set('user', $records);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function attemptSql($records)
+    {
         # build the conditions
 
         $first = true;
@@ -53,31 +81,27 @@ class Auth
 
         # find the informations provided in the $records
 
-        $auth_model = config()->app->auth->model;
+        $auth_model = config()->auth->model;
 
-        $records = $auth_model::find([
+        $user = $auth_model::find([
             $conditions,
             'bind' => $records,
         ])->getFirst();
 
-        # check if there is no record, then return false
-
-        if (! $records) {
-            return false;
-        }
-
-        # now check if the password given is matched with the
-        # existing password recorded.
-
-        if (resolve('security')->checkHash($password, $records->{$password_field})) {
-            resolve('session')->set('isAuthenticated', true);
-            resolve('session')->set('user', $records);
-
-            return true;
-        }
-
-        return false;
+        return $user;
     }
+
+    private function attemptNoSql($records)
+    {
+        # find the informations provided in the $records
+
+        $auth_model = config()->auth->model;
+
+        $user = $auth_model::findOne($records);
+
+        return $user;
+    }
+
 
     /**
      * Redirect based on the key provided in the url.
@@ -86,7 +110,7 @@ class Auth
      */
     public function redirectIntended()
     {
-        $redirect_key = config()->app->auth->redirect_key;
+        $redirect_key = config()->auth->redirect_key;
 
         $redirect_to = resolve('request')->get($redirect_key);
 
@@ -133,4 +157,5 @@ class Auth
 
         return true;
     }
+
 }

@@ -22,7 +22,7 @@ class HelpersTest extends \PHPUnit_Framework_TestCase
      */
     public function testHelpersFacade()
     {
-        $this->assertInstanceOf(\Saeno\Support\Auth\Auth::class, auth());
+        $this->assertInstanceOf(\Saeno\Support\Auth\Manager::class, auth());
         $this->assertInstanceOf(\Phalcon\Config::class, config());
         $this->assertInstanceOf(\Phalcon\Mvc\Dispatcher::class, dispatcher());
         $this->assertInstanceOf(\Phalcon\Filter::class, filter());
