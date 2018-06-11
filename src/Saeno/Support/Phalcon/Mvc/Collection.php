@@ -23,7 +23,7 @@ class Collection extends IncubatorMongoCollection
      * @param  array $data
      * @return bool
      */
-    public function create($data)
+    public function createFromArray($data)
     {
         foreach ($data as $key => $val) {
             $this->{$key} = $val;
