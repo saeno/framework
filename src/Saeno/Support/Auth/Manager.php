@@ -37,7 +37,7 @@ class Manager
         unset($records[$password_field]);
 
         $auth_model = config()->auth->model;
-        if ($auth_model instanceof \Phalcon\Mvc\Collection) {
+        if (is_subclass_of($auth_model, \Phalcon\Mvc\Collection::class)) {
             $user = $this->attemptNoSql($records);
         } else {
             $user = $this->attemptSql($records);
